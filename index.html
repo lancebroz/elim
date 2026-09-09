@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 NFL Win Probability Grid — DraftKings</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#0e1117; color:#e8e8e8; padding:16px; }
+  h1 { font-size:19px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+  .pill { font-size:10px; font-weight:800; letter-spacing:.06em; background:#16321f; color:#4fca77; border:1px solid #2b8a4a; padding:2px 7px; border-radius:10px; }
+  .pill.stale { background:#33251a; color:#e0a95f; border-color:#8a6a2b; }
+  .sub { font-size:12px; color:#9aa3ad; margin-bottom:12px; line-height:1.5; }
+  .legend { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:11px; color:#9aa3ad; margin-bottom:12px; }
+  .bar { width:120px; height:12px; border-radius:6px; background:linear-gradient(90deg, rgb(198,63,63), rgb(247,241,222), rgb(43,138,74)); }
+  .chip { display:inline-block; padding:2px 7px; border-radius:4px; font-weight:600; }
+  .chip.b { background:#1c2330; color:#5f6b7a; }
+  .chip.n { background:#181d26; color:#5f6b7a; }
+  .chip.w { background:#123c22; color:#4fca77; }
+  .chip.l { background:#3c1515; color:#e06060; }
+  .chip.op { background:rgb(148,191,150); color:#1a1a1a; opacity:.55; }
+  .chip.lv { background:rgb(148,191,150); color:#1a1a1a; position:relative; }
+  .dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:#4fca77; margin-left:3px; vertical-align:middle; }
+  .wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:8px; }
+  table { border-collapse:separate; border-spacing:2px; }
+  th { font-size:10.5px; font-weight:700; color:#9aa3ad; padding:4px 2px; min-width:34px; }
+  th.cur { color:#4fca77; }
+  th.avgh { color:#e8e8e8; }
+  td { text-align:center; font-size:11.5px; font-weight:700; border-radius:4px; min-width:34px; height:30px; }
+  td.team { position:sticky; left:0; background:#0e1117; text-align:left; padding-right:8px; min-width:74px; z-index:2; cursor:pointer; }
+  td.team:hover span { text-decoration:underline; }
+  td.team img { width:22px; height:22px; vertical-align:middle; margin-right:6px; }
+  td.team span { font-size:12px; font-weight:700; vertical-align:middle; }
+  th.teamh { position:sticky; left:0; background:#0e1117; z-index:3; }
+  td.bye { background:#1c2330; color:#5f6b7a; font-size:9px; font-weight:600; }
+  td.nl { background:#181d26; color:#5f6b7a; font-size:9px; font-weight:600; }
+  td.open { opacity:.55; }
+  td.finw { background:#123c22; color:#4fca77; }
+  td.finl { background:#3c1515; color:#e06060; }
+  td.avg { outline:2px solid #2a3342; }
+  td.wp { position:relative; }
+  td.wp .dot { position:absolute; top:3px; right:3px; }
+  .foot { font-size:11px; color:#5f6b7a; margin-top:12px; line-height:1.5; }
+  #stamp { font-size:11px; color:#5f6b7a; margin-bottom:10px; }
+  /* chart modal */
+  #overlay { display:none; position:fixed; inset:0; background:rgba(5,8,12,.82); z-index:50; align-items:center; justify-content:center; padding:16px; }
+  #overlay.show { display:flex; }
+  #modal { background:#141a24; border:1px solid #2a3342; border-radius:12px; padding:18px; max-width:640px; width:100%; }
+  #modal .head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  #modal .head img { width:30px; height:30px; }
+  #modal .head .name { font-size:16px; font-weight:800; }
+  #modal .head .close { margin-left:auto; background:#1c2330; border:none; color:#9aa3ad; font-size:14px; font-weight:700; width:28px; height:28px; border-radius:6px; cursor:pointer; }
+  #modal .head .close:hover { color:#fff; }
+  #modal .note { font-size:11px; color:#9aa3ad; margin-bottom:10px; }
+  #chart svg { width:100%; height:auto; display:block; }
+</style>
+</head>
+<body>
+<h1>2026 NFL Win Probability <span class="pill" id="pill">DK LINES</span></h1>
+<div class="sub">No-vig win probabilities from DraftKings moneylines, refreshed each morning. Live lines where DraftKings has the game posted; May look-ahead openers (dimmed) elsewhere. Finished games show the result. <b>Click a team for its remaining-week win probability curve.</b></div>
+<div id="stamp">Loading odds…</div>
+<div class="legend">
+  <span>0%</span><div class="bar"></div><span>100%</span>
+  <span class="chip lv">62<span class="dot"></span></span><span>current DK line</span>
+  <span class="chip op">62</span><span>May opener</span>
+  <span class="chip w">W</span><span class="chip l">L</span><span>final</span>
+  <span class="chip b">BYE</span>
+  <span class="chip n">OPP</span><span>no line</span>
+</div>
+<div class="wrap"><div id="grid"></div></div>
+<div class="foot">Odds refresh once daily (edge cache expires 7 AM CT; DraftKings moneylines via The Odds API). Results from ESPN. AVG uses remaining games only — current line where posted, opener otherwise. Openers are static May 14 lines and don't reflect news since.</div>
+
+<div id="overlay"><div id="modal">
+  <div class="head"><img id="mLogo" src="" alt=""><span class="name" id="mName"></span><button class="close" onclick="closeChart()">✕</button></div>
+  <div class="note">Remaining weeks · dotted line = 50% · <span style="color:#e8c34a">◉ gold = peak win probability</span> · hollow points = May opener, solid = current DK line</div>
+  <div id="chart"></div>
+</div></div>
+
+<script>
+const BASE = {"SEA":{"1":{"o":"vs NE","p":64.5},"2":{"o":"@ARI","p":80.4},"3":{"o":"@WAS","p":63.7},"4":{"o":"vs LAC","p":59.3},"5":{"o":"vs SF","p":64.5},"6":{"o":"@DEN","p":54.3},"7":{"o":"vs KC","p":58.3},"8":{"o":"vs CHI","p":65.7},"9":{"o":"vs ARI","p":84.7},"10":{"o":"@LV","p":null},"12":{"o":"@SF","p":null},"13":{"o":"vs DAL","p":66.4},"14":{"o":"vs NYG","p":null},"15":{"o":"@PHI","p":null},"16":{"o":"vs LAR","p":52.2},"17":{"o":"@CAR","p":null},"18":{"o":"@LAR","p":null}},"LAR":{"1":{"o":"vs SF","p":58.3},"2":{"o":"vs NYG","p":75.7},"3":{"o":"@DEN","p":56.3},"4":{"o":"@PHI","p":51.7},"5":{"o":"vs BUF","p":58.3},"6":{"o":"vs ARI","p":84.0},"7":{"o":"@LV","p":75.1},"8":{"o":"vs LAC","p":63.1},"9":{"o":"@WAS","p":64.5},"10":{"o":"@ARI","p":80.8},"12":{"o":"vs GB","p":63.7},"13":{"o":"vs KC","p":63.1},"14":{"o":"@SF","p":null},"15":{"o":"vs DAL","p":null},"16":{"o":"@SEA","p":47.8},"17":{"o":"@TB","p":null},"18":{"o":"vs SEA","p":null}},"BAL":{"1":{"o":"@IND","p":62.2},"2":{"o":"vs NO","p":76.0},"3":{"o":"@DAL","p":55.1},"4":{"o":"vs TEN","p":76.6},"5":{"o":"@ATL","p":65.7},"6":{"o":"@CLE","p":70.0},"7":{"o":"vs CIN","p":63.1},"8":{"o":"@BUF","p":44.9},"9":{"o":"vs JAX","p":65.7},"10":{"o":"vs LAC","p":56.3},"11":{"o":"@CAR","p":null},"12":{"o":"@HOU","p":null},"14":{"o":"vs TB","p":null},"15":{"o":"@PIT","p":null},"16":{"o":"vs CLE","p":null},"17":{"o":"@CIN","p":45.7},"18":{"o":"vs PIT","p":null}},"SF":{"1":{"o":"@LAR","p":41.7},"2":{"o":"vs MIA","p":81.7},"3":{"o":"vs ARI","p":83.2},"4":{"o":"vs DEN","p":55.1},"5":{"o":"@SEA","p":35.5},"6":{"o":"vs WAS","p":68.5},"7":{"o":"@ATL","p":65.7},"9":{"o":"vs LV","p":77.7},"10":{"o":"@DAL","p":47.8},"11":{"o":"vs MIN","p":64.5},"12":{"o":"vs SEA","p":null},"13":{"o":"@NYG","p":null},"14":{"o":"vs LAR","p":null},"15":{"o":"@LAC","p":43.7},"16":{"o":"@KC","p":null},"17":{"o":"vs PHI","p":null},"18":{"o":"@ARI","p":null}},"DET":{"1":{"o":"vs NO","p":73.4},"2":{"o":"@BUF","p":40.7},"3":{"o":"vs NYJ","p":78.7},"4":{"o":"@CAR","p":58.3},"5":{"o":"@ARI","p":76.6},"7":{"o":"vs GB","p":53.2},"8":{"o":"vs MIN","p":null},"9":{"o":"@MIA","p":null},"10":{"o":"vs NE","p":53.2},"11":{"o":"vs TB","p":null},"12":{"o":"vs CHI","p":55.1},"13":{"o":"@ATL","p":null},"14":{"o":"vs TEN","p":null},"15":{"o":"@MIN","p":null},"16":{"o":"vs NYG","p":68.1},"17":{"o":"@CHI","p":null},"18":{"o":"@GB","p":43.7}},"BUF":{"1":{"o":"@HOU","p":50.4},"2":{"o":"vs DET","p":59.3},"3":{"o":"vs LAC","p":56.3},"4":{"o":"vs NE","p":59.3},"5":{"o":"@LAR","p":41.7},"6":{"o":"@LV","p":71.0},"8":{"o":"vs BAL","p":55.1},"9":{"o":"@MIN","p":58.3},"10":{"o":"@NYJ","p":74.1},"11":{"o":"vs MIA","p":83.2},"12":{"o":"vs KC","p":55.1},"13":{"o":"@NE","p":null},"14":{"o":"@GB","p":47.8},"15":{"o":"vs CHI","p":null},"16":{"o":"@DEN","p":54.7},"17":{"o":"@MIA","p":null},"18":{"o":"vs NYJ","p":null}},"GB":{"1":{"o":"@MIN","p":53.2},"2":{"o":"@NYJ","p":71.0},"3":{"o":"vs ATL","p":75.1},"4":{"o":"@TB","p":53.2},"5":{"o":"vs CHI","p":60.0},"6":{"o":"vs DAL","p":60.0},"7":{"o":"@DET","p":46.8},"8":{"o":"vs CAR","p":73.4},"9":{"o":"@NE","p":46.8},"10":{"o":"vs MIN","p":null},"12":{"o":"@LAR","p":36.3},"13":{"o":"@NO","p":66.9},"14":{"o":"vs BUF","p":52.2},"15":{"o":"vs MIA","p":81.7},"16":{"o":"@CHI","p":48.3},"17":{"o":"vs HOU","p":55.1},"18":{"o":"vs DET","p":56.3}},"PHI":{"1":{"o":"vs WAS","p":67.5},"2":{"o":"@TEN","p":65.7},"3":{"o":"@CHI","p":51.7},"4":{"o":"vs LAR","p":48.3},"5":{"o":"@JAX","p":54.3},"6":{"o":"vs CAR","p":71.0},"7":{"o":"vs DAL","p":59.3},"8":{"o":"@WAS","p":55.1},"9":{"o":"vs NYG","p":67.5},"11":{"o":"vs PIT","p":null},"12":{"o":"@DAL","p":47.8},"13":{"o":"@ARI","p":null},"14":{"o":"vs IND","p":null},"15":{"o":"vs SEA","p":null},"16":{"o":"vs HOU","p":55.1},"17":{"o":"@SF","p":null},"18":{"o":"@NYG","p":null}},"KC":{"1":{"o":"vs DEN","p":58.3},"2":{"o":"vs IND","p":68.5},"3":{"o":"@MIA","p":74.1},"4":{"o":"@LV","p":69.1},"6":{"o":"vs LAC","p":55.1},"7":{"o":"@SEA","p":41.7},"8":{"o":"@DEN","p":null},"9":{"o":"vs NYJ","p":null},"10":{"o":"@ATL","p":66.4},"11":{"o":"vs ARI","p":null},"12":{"o":"@BUF","p":44.9},"13":{"o":"@LAR","p":36.9},"14":{"o":"@CIN","p":null},"15":{"o":"vs NE","p":56.3},"16":{"o":"vs SF","p":null},"17":{"o":"@LAC","p":null},"18":{"o":"vs LV","p":null}},"CIN":{"1":{"o":"vs TB","p":63.7},"2":{"o":"@HOU","p":44.9},"3":{"o":"@PIT","p":51.1},"4":{"o":"vs JAX","p":55.1},"5":{"o":"@MIA","p":68.1},"7":{"o":"@BAL","p":36.9},"8":{"o":"vs TEN","p":null},"9":{"o":"@ATL","p":66.4},"10":{"o":"vs PIT","p":63.1},"11":{"o":"@WAS","p":53.2},"12":{"o":"vs NO","p":null},"13":{"o":"@CLE","p":null},"14":{"o":"vs KC","p":null},"15":{"o":"@CAR","p":null},"16":{"o":"@IND","p":null},"17":{"o":"vs BAL","p":54.3},"18":{"o":"vs CLE","p":null}},"HOU":{"1":{"o":"vs BUF","p":49.6},"2":{"o":"vs CIN","p":55.1},"3":{"o":"@IND","p":54.3},"4":{"o":"vs DAL","p":55.1},"5":{"o":"@TEN","p":63.1},"6":{"o":"@JAX","p":51.1},"7":{"o":"vs NYG","p":67.5},"9":{"o":"@LAC","p":null},"10":{"o":"@CLE","p":null},"11":{"o":"vs IND","p":67.5},"12":{"o":"vs BAL","p":null},"13":{"o":"@PIT","p":53.2},"14":{"o":"@WAS","p":null},"15":{"o":"vs JAX","p":null},"16":{"o":"@PHI","p":44.9},"17":{"o":"@GB","p":44.9},"18":{"o":"vs TEN","p":null}},"CHI":{"1":{"o":"@CAR","p":55.1},"2":{"o":"vs MIN","p":61.6},"3":{"o":"vs PHI","p":48.3},"4":{"o":"vs NYJ","p":76.0},"5":{"o":"@GB","p":40.0},"6":{"o":"@ATL","p":60.0},"7":{"o":"vs NE","p":52.2},"8":{"o":"@SEA","p":34.3},"9":{"o":"vs TB","p":63.1},"11":{"o":"vs NO","p":70.5},"12":{"o":"@DET","p":44.9},"13":{"o":"vs JAX","p":null},"14":{"o":"@MIA","p":null},"15":{"o":"@BUF","p":null},"16":{"o":"vs GB","p":51.7},"17":{"o":"vs DET","p":null},"18":{"o":"@MIN","p":null}},"NE":{"1":{"o":"@SEA","p":35.5},"2":{"o":"vs PIT","p":66.4},"3":{"o":"@JAX","p":51.7},"4":{"o":"@BUF","p":40.7},"5":{"o":"vs LV","p":77.7},"6":{"o":"vs NYJ","p":78.7},"7":{"o":"@CHI","p":47.8},"8":{"o":"@MIA","p":null},"9":{"o":"vs GB","p":53.2},"10":{"o":"@DET","p":46.8},"12":{"o":"@LAC","p":44.9},"13":{"o":"vs BUF","p":null},"14":{"o":"vs MIN","p":66.4},"15":{"o":"@KC","p":43.7},"16":{"o":"@NYJ","p":null},"17":{"o":"vs DEN","p":null},"18":{"o":"vs MIA","p":null}},"LAC":{"1":{"o":"vs ARI","p":82.7},"2":{"o":"vs LV","p":77.7},"3":{"o":"@BUF","p":43.7},"4":{"o":"@SEA","p":40.7},"5":{"o":"vs DEN","p":56.3},"6":{"o":"@KC","p":44.9},"8":{"o":"@LAR","p":36.9},"9":{"o":"vs HOU","p":null},"10":{"o":"@BAL","p":43.7},"11":{"o":"vs NYJ","p":null},"12":{"o":"vs NE","p":55.1},"13":{"o":"@TB","p":null},"14":{"o":"@LV","p":null},"15":{"o":"vs SF","p":56.3},"16":{"o":"@MIA","p":null},"17":{"o":"vs KC","p":null},"18":{"o":"@DEN","p":null}},"DAL":{"1":{"o":"@NYG","p":54.3},"2":{"o":"vs WAS","p":64.5},"3":{"o":"vs BAL","p":44.9},"4":{"o":"@HOU","p":44.9},"5":{"o":"vs TB","p":64.5},"6":{"o":"@GB","p":40.0},"7":{"o":"@PHI","p":40.7},"8":{"o":"vs ARI","p":80.0},"9":{"o":"@IND","p":46.8},"10":{"o":"vs SF","p":52.2},"11":{"o":"vs TEN","p":null},"12":{"o":"vs PHI","p":52.2},"13":{"o":"@SEA","p":33.6},"15":{"o":"@LAR","p":null},"16":{"o":"vs JAX","p":null},"17":{"o":"vs NYG","p":null},"18":{"o":"@WAS","p":null}},"JAX":{"1":{"o":"vs CLE","p":71.0},"2":{"o":"@DEN","p":43.7},"3":{"o":"vs NE","p":48.3},"4":{"o":"@CIN","p":44.9},"5":{"o":"vs PHI","p":45.7},"6":{"o":"vs HOU","p":48.9},"8":{"o":"vs IND","p":null},"9":{"o":"@BAL","p":34.3},"10":{"o":"@TEN","p":null},"11":{"o":"@NYG","p":53.2},"12":{"o":"vs TEN","p":null},"13":{"o":"@CHI","p":null},"14":{"o":"vs PIT","p":60.0},"15":{"o":"@HOU","p":null},"16":{"o":"@DAL","p":null},"17":{"o":"vs WAS","p":null},"18":{"o":"@IND","p":null}},"DEN":{"1":{"o":"@KC","p":41.7},"2":{"o":"vs JAX","p":56.3},"3":{"o":"vs LAR","p":43.7},"4":{"o":"@SF","p":44.9},"5":{"o":"@LAC","p":43.7},"6":{"o":"vs SEA","p":45.7},"7":{"o":"@ARI","p":75.1},"8":{"o":"vs KC","p":null},"9":{"o":"@CAR","p":null},"11":{"o":"vs LV","p":null},"12":{"o":"@PIT","p":51.7},"13":{"o":"vs MIA","p":null},"14":{"o":"@NYJ","p":null},"15":{"o":"@LV","p":null},"16":{"o":"vs BUF","p":45.3},"17":{"o":"@NE","p":null},"18":{"o":"vs LAC","p":null}},"TB":{"1":{"o":"@CIN","p":36.3},"2":{"o":"vs CLE","p":68.1},"3":{"o":"vs MIN","p":53.2},"4":{"o":"vs GB","p":46.8},"5":{"o":"@DAL","p":35.5},"6":{"o":"vs PIT","p":53.2},"7":{"o":"@CAR","p":null},"8":{"o":"vs ATL","p":null},"9":{"o":"@CHI","p":36.9},"11":{"o":"@DET","p":null},"12":{"o":"vs CAR","p":63.1},"13":{"o":"vs LAC","p":null},"14":{"o":"@BAL","p":null},"15":{"o":"vs NO","p":null},"16":{"o":"@ATL","p":null},"17":{"o":"vs LAR","p":null},"18":{"o":"@NO","p":null}},"PIT":{"1":{"o":"vs ATL","p":60.9},"2":{"o":"@NE","p":33.6},"3":{"o":"vs CIN","p":48.9},"4":{"o":"@CLE","p":55.1},"5":{"o":"vs IND","p":55.1},"6":{"o":"@TB","p":46.8},"7":{"o":"@NO","p":55.1},"8":{"o":"vs CLE","p":null},"10":{"o":"@CIN","p":36.9},"11":{"o":"@PHI","p":null},"12":{"o":"vs DEN","p":48.3},"13":{"o":"vs HOU","p":46.8},"14":{"o":"@JAX","p":40.0},"15":{"o":"vs BAL","p":null},"16":{"o":"vs CAR","p":null},"17":{"o":"@TEN","p":null},"18":{"o":"@BAL","p":null}},"IND":{"1":{"o":"vs BAL","p":37.8},"2":{"o":"@KC","p":31.5},"3":{"o":"vs HOU","p":45.7},"4":{"o":"@WAS","p":50.0},"5":{"o":"@PIT","p":44.9},"6":{"o":"vs TEN","p":63.1},"7":{"o":"@MIN","p":59.3},"8":{"o":"@JAX","p":null},"9":{"o":"vs DAL","p":53.2},"10":{"o":"vs MIA","p":null},"11":{"o":"@HOU","p":32.5},"12":{"o":"vs NYG","p":null},"14":{"o":"@PHI","p":null},"15":{"o":"@TEN","p":null},"16":{"o":"vs CIN","p":null},"17":{"o":"@CLE","p":null},"18":{"o":"vs JAX","p":null}},"MIN":{"1":{"o":"vs GB","p":46.8},"2":{"o":"@CHI","p":38.4},"3":{"o":"@TB","p":46.8},"4":{"o":"vs MIA","p":76.6},"5":{"o":"@NO","p":52.2},"7":{"o":"vs IND","p":40.7},"8":{"o":"@DET","p":null},"9":{"o":"vs BUF","p":41.7},"10":{"o":"@GB","p":null},"11":{"o":"@SF","p":35.5},"12":{"o":"vs ATL","p":null},"13":{"o":"vs CAR","p":null},"14":{"o":"@NE","p":33.6},"15":{"o":"vs DET","p":null},"16":{"o":"vs WAS","p":null},"17":{"o":"@NYJ","p":null},"18":{"o":"vs CHI","p":null}},"NYG":{"1":{"o":"vs DAL","p":45.7},"2":{"o":"@LAR","p":24.3},"3":{"o":"vs TEN","p":60.9},"4":{"o":"vs ARI","p":73.4},"5":{"o":"@WAS","p":44.9},"6":{"o":"vs NO","p":57.2},"7":{"o":"@HOU","p":32.5},"9":{"o":"@PHI","p":32.5},"10":{"o":"vs WAS","p":53.2},"11":{"o":"vs JAX","p":46.8},"12":{"o":"@IND","p":null},"13":{"o":"vs SF","p":null},"14":{"o":"@SEA","p":null},"15":{"o":"vs CLE","p":null},"16":{"o":"@DET","p":31.9},"17":{"o":"@DAL","p":null},"18":{"o":"vs PHI","p":null}},"WAS":{"1":{"o":"@PHI","p":32.5},"2":{"o":"@DAL","p":35.5},"3":{"o":"vs SEA","p":36.3},"4":{"o":"vs IND","p":50.0},"5":{"o":"vs NYG","p":55.1},"6":{"o":"@SF","p":31.5},"8":{"o":"vs PHI","p":44.9},"9":{"o":"vs LAR","p":35.5},"10":{"o":"@NYG","p":46.8},"11":{"o":"vs CIN","p":46.8},"12":{"o":"@ARI","p":null},"13":{"o":"@TEN","p":null},"14":{"o":"vs HOU","p":null},"15":{"o":"vs ATL","p":null},"16":{"o":"@MIN","p":null},"17":{"o":"@JAX","p":null},"18":{"o":"vs DAL","p":null}},"TEN":{"1":{"o":"vs NYJ","p":60.4},"2":{"o":"vs PHI","p":34.3},"3":{"o":"@NYG","p":39.1},"4":{"o":"@BAL","p":23.4},"5":{"o":"vs HOU","p":36.9},"6":{"o":"@IND","p":36.9},"7":{"o":"vs CLE","p":56.3},"8":{"o":"@CIN","p":null},"10":{"o":"vs JAX","p":null},"11":{"o":"@DAL","p":null},"12":{"o":"@JAX","p":null},"13":{"o":"vs WAS","p":null},"14":{"o":"@DET","p":null},"15":{"o":"vs IND","p":null},"16":{"o":"@LV","p":null},"17":{"o":"vs PIT","p":null},"18":{"o":"@HOU","p":null}},"NO":{"1":{"o":"@DET","p":26.6},"2":{"o":"@BAL","p":24.0},"3":{"o":"vs LV","p":60.0},"4":{"o":"vs ATL","p":55.1},"5":{"o":"vs MIN","p":47.8},"6":{"o":"@NYG","p":42.8},"7":{"o":"vs PIT","p":44.9},"9":{"o":"vs CLE","p":null},"10":{"o":"vs CAR","p":null},"11":{"o":"@CHI","p":29.5},"12":{"o":"@CIN","p":null},"13":{"o":"vs GB","p":33.1},"14":{"o":"@CAR","p":null},"15":{"o":"@TB","p":null},"16":{"o":"vs ARI","p":null},"17":{"o":"@ATL","p":null},"18":{"o":"vs TB","p":null}},"CAR":{"1":{"o":"vs CHI","p":44.9},"2":{"o":"@ATL","p":47.8},"3":{"o":"@CLE","p":52.2},"4":{"o":"vs DET","p":41.7},"6":{"o":"@PHI","p":29.0},"7":{"o":"vs TB","p":null},"8":{"o":"@GB","p":26.6},"9":{"o":"vs DEN","p":null},"10":{"o":"@NO","p":null},"11":{"o":"vs BAL","p":null},"12":{"o":"@TB","p":36.9},"13":{"o":"@MIN","p":null},"14":{"o":"vs NO","p":null},"15":{"o":"vs CIN","p":null},"16":{"o":"@PIT","p":null},"17":{"o":"vs SEA","p":null},"18":{"o":"vs ATL","p":null}},"CLE":{"1":{"o":"@JAX","p":29.0},"2":{"o":"@TB","p":31.9},"3":{"o":"vs CAR","p":47.8},"4":{"o":"vs PIT","p":44.9},"5":{"o":"@NYJ","p":46.8},"6":{"o":"vs BAL","p":30.0},"7":{"o":"@TEN","p":43.7},"8":{"o":"@PIT","p":null},"9":{"o":"@NO","p":null},"10":{"o":"vs HOU","p":null},"12":{"o":"vs LV","p":null},"13":{"o":"vs CIN","p":null},"14":{"o":"vs ATL","p":null},"15":{"o":"@NYG","p":null},"16":{"o":"@BAL","p":null},"17":{"o":"vs IND","p":null},"18":{"o":"@CIN","p":null}},"ATL":{"1":{"o":"@PIT","p":39.1},"2":{"o":"vs CAR","p":52.2},"3":{"o":"@GB","p":24.9},"4":{"o":"@NO","p":44.9},"5":{"o":"vs BAL","p":34.3},"6":{"o":"vs CHI","p":40.0},"7":{"o":"vs SF","p":34.3},"8":{"o":"@TB","p":null},"9":{"o":"vs CIN","p":33.6},"10":{"o":"vs KC","p":33.6},"12":{"o":"@MIN","p":null},"13":{"o":"vs DET","p":null},"14":{"o":"@CLE","p":null},"15":{"o":"@WAS","p":null},"16":{"o":"vs TB","p":null},"17":{"o":"vs NO","p":null},"18":{"o":"@CAR","p":null}},"NYJ":{"1":{"o":"@TEN","p":39.6},"2":{"o":"vs GB","p":29.0},"3":{"o":"@DET","p":21.3},"4":{"o":"@CHI","p":24.0},"5":{"o":"vs CLE","p":53.2},"6":{"o":"@NE","p":21.3},"7":{"o":"vs MIA","p":56.3},"8":{"o":"vs LV","p":null},"9":{"o":"@KC","p":null},"10":{"o":"vs BUF","p":25.9},"11":{"o":"@LAC","p":null},"12":{"o":"@MIA","p":null},"14":{"o":"vs DEN","p":null},"15":{"o":"@ARI","p":null},"16":{"o":"vs NE","p":null},"17":{"o":"vs MIN","p":null},"18":{"o":"@BUF","p":null}},"LV":{"1":{"o":"vs MIA","p":61.6},"2":{"o":"@LAC","p":22.3},"3":{"o":"@NO","p":40.0},"4":{"o":"vs KC","p":30.9},"5":{"o":"@NE","p":22.3},"6":{"o":"vs BUF","p":29.0},"7":{"o":"vs LAR","p":24.9},"8":{"o":"@NYJ","p":null},"9":{"o":"@SF","p":22.3},"10":{"o":"vs SEA","p":null},"11":{"o":"@DEN","p":null},"12":{"o":"@CLE","p":null},"14":{"o":"vs LAC","p":null},"15":{"o":"vs DEN","p":null},"16":{"o":"vs TEN","p":null},"17":{"o":"@ARI","p":null},"18":{"o":"@KC","p":null}},"MIA":{"1":{"o":"@LV","p":38.4},"2":{"o":"@SF","p":18.3},"3":{"o":"vs KC","p":25.9},"4":{"o":"@MIN","p":23.4},"5":{"o":"vs CIN","p":31.9},"7":{"o":"@NYJ","p":43.7},"8":{"o":"vs NE","p":null},"9":{"o":"vs DET","p":null},"10":{"o":"@IND","p":null},"11":{"o":"@BUF","p":16.8},"12":{"o":"vs NYJ","p":null},"13":{"o":"@DEN","p":null},"14":{"o":"vs CHI","p":null},"15":{"o":"@GB","p":18.3},"16":{"o":"vs LAC","p":null},"17":{"o":"vs BUF","p":null},"18":{"o":"@NE","p":null}},"ARI":{"1":{"o":"@LAC","p":17.3},"2":{"o":"vs SEA","p":19.6},"3":{"o":"@SF","p":16.8},"4":{"o":"@NYG","p":26.6},"5":{"o":"vs DET","p":23.4},"6":{"o":"@LAR","p":16.0},"7":{"o":"vs DEN","p":24.9},"8":{"o":"@DAL","p":20.0},"9":{"o":"@SEA","p":15.3},"10":{"o":"vs LAR","p":19.2},"11":{"o":"@KC","p":null},"12":{"o":"vs WAS","p":null},"13":{"o":"vs PHI","p":null},"15":{"o":"vs NYJ","p":null},"16":{"o":"@NO","p":null},"17":{"o":"vs LV","p":null},"18":{"o":"vs SF","p":null}}};
+const TEAMS = Object.keys(BASE);
+const SLUG = { WAS:'wsh' };
+const NAMES = { ARI:'Cardinals',ATL:'Falcons',BAL:'Ravens',BUF:'Bills',CAR:'Panthers',CHI:'Bears',CIN:'Bengals',CLE:'Browns',DAL:'Cowboys',DEN:'Broncos',DET:'Lions',GB:'Packers',HOU:'Texans',IND:'Colts',JAX:'Jaguars',KC:'Chiefs',LAC:'Chargers',LAR:'Rams',LV:'Raiders',MIA:'Dolphins',MIN:'Vikings',NE:'Patriots',NO:'Saints',NYG:'Giants',NYJ:'Jets',PHI:'Eagles',PIT:'Steelers',SEA:'Seahawks',SF:'49ers',TB:'Buccaneers',TEN:'Titans',WAS:'Commanders' };
+const FULL = {
+  'Arizona Cardinals':'ARI','Atlanta Falcons':'ATL','Baltimore Ravens':'BAL','Buffalo Bills':'BUF',
+  'Carolina Panthers':'CAR','Chicago Bears':'CHI','Cincinnati Bengals':'CIN','Cleveland Browns':'CLE',
+  'Dallas Cowboys':'DAL','Denver Broncos':'DEN','Detroit Lions':'DET','Green Bay Packers':'GB',
+  'Houston Texans':'HOU','Indianapolis Colts':'IND','Jacksonville Jaguars':'JAX','Kansas City Chiefs':'KC',
+  'Los Angeles Chargers':'LAC','Los Angeles Rams':'LAR','Las Vegas Raiders':'LV','Miami Dolphins':'MIA',
+  'Minnesota Vikings':'MIN','New England Patriots':'NE','New Orleans Saints':'NO','New York Giants':'NYG',
+  'New York Jets':'NYJ','Philadelphia Eagles':'PHI','Pittsburgh Steelers':'PIT','Seattle Seahawks':'SEA',
+  'San Francisco 49ers':'SF','Tampa Bay Buccaneers':'TB','Tennessee Titans':'TEN','Washington Commanders':'WAS'
+};
+const ESPN_FIX = { WSH:'WAS' };
+
+const WK1 = Date.UTC(2026, 8, 8, 10, 0, 0);
+function weekOf(iso) {
+  const w = Math.floor((new Date(iso).getTime() - WK1) / (7 * 864e5)) + 1;
+  return Math.max(1, Math.min(18, w));
+}
+function currentWeek() { return weekOf(new Date().toISOString()); }
+function implied(ml) { return ml > 0 ? 100 / (ml + 100) : -ml / (-ml + 100); }
+function noVig(mlA, mlB) { const a = implied(mlA), b = implied(mlB); return a / (a + b); }
+
+function cellColor(p) {
+  const lo = 20, hi = 80, x = Math.max(lo, Math.min(hi, p));
+  let f, c1, c2;
+  if (x <= 50) { f = (x - lo) / 30; c1 = [198,63,63]; c2 = [247,241,222]; }
+  else { f = (x - 50) / 30; c1 = [247,241,222]; c2 = [43,138,74]; }
+  const c = c1.map((v, i) => Math.round(v + (c2[i] - v) * f));
+  const txt = (p > 38 && p < 66) ? '#1a1a1a' : '#fff';
+  return [`rgb(${c[0]},${c[1]},${c[2]})`, txt];
+}
+
+const state = {};
+for (const t of TEAMS) {
+  state[t] = {};
+  for (const w in BASE[t]) {
+    const c = BASE[t][w];
+    state[t][w] = { opp: c.o, p: c.p, src: 'open', ml: null };
+  }
+}
+
+function fmtMl(ml) { return ml > 0 ? '+' + ml : String(ml); }
+
+function render() {
+  const cw = currentWeek();
+  const rows = TEAMS.map(t => {
+    const ps = [];
+    for (let w = 1; w <= 18; w++) {
+      const c = state[t][w];
+      if (c && !c.result && c.p != null) ps.push(c.p);
+    }
+    return { t, avg: ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : 0, n: ps.length };
+  }).sort((a, b) => b.avg - a.avg);
+
+  let h = '<table><thead><tr><th class="teamh"></th>';
+  for (let w = 1; w <= 18; w++) h += `<th class="${w === cw ? 'cur' : ''}">W${w}</th>`;
+  h += '<th class="avgh">AVG</th></tr></thead><tbody>';
+
+  for (const { t, avg, n } of rows) {
+    const slug = SLUG[t] || t.toLowerCase();
+    h += `<tr><td class="team" onclick="openChart('${t}')"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/${slug}.png" alt="${t}" loading="lazy"><span>${t}</span></td>`;
+    for (let w = 1; w <= 18; w++) {
+      const c = state[t][w];
+      if (!c) { h += '<td class="bye">BYE</td>'; continue; }
+      if (c.result) {
+        h += `<td class="${c.result === 'W' ? 'finw' : 'finl'}" title="Week ${w}: ${c.opp} — final ${c.score}">${c.result}</td>`;
+      } else if (c.p == null) {
+        h += `<td class="nl" title="Week ${w}: ${c.opp} — no line posted">${c.opp.replace('vs ', '')}</td>`;
+      } else {
+        const [bg, txt] = cellColor(c.p);
+        const live = c.src === 'live';
+        const mlStr = c.ml != null ? ` (${fmtMl(c.ml)})` : '';
+        h += `<td class="wp${live ? ' live' : ' open'}" style="background:${bg};color:${txt}" title="Week ${w}: ${c.opp}${mlStr} — ${c.p.toFixed(1)}% ${live ? 'current DK' : 'May opener'}">${Math.round(c.p)}${live ? '<span class=dot></span>' : ''}</td>`;
+      }
+    }
+    const [abg, atxt] = cellColor(avg);
+    h += `<td class="avg" style="background:${abg};color:${atxt}" title="Avg of ${n} remaining priced games">${Math.round(avg)}</td></tr>`;
+  }
+  h += '</tbody></table>';
+  document.getElementById('grid').innerHTML = h;
+}
+
+// ---- team chart ----
+function openChart(t) {
+  const priced = [];
+  let firstW = 18, anyRemaining = false;
+  for (let w = 1; w <= 18; w++) {
+    const c = state[t][w];
+    if (!c || c.result) continue;          // remaining weeks only
+    anyRemaining = true;
+    firstW = Math.min(firstW, w);
+    if (c.p != null) priced.push({ w, p: c.p, opp: c.opp, src: c.src });
+  }
+  document.getElementById('mLogo').src = `https://a.espncdn.com/i/teamlogos/nfl/500/${SLUG[t] || t.toLowerCase()}.png`;
+  document.getElementById('mName').textContent = `${t} · ${NAMES[t]} — remaining weeks`;
+
+  const W = 600, H = 300, mL = 38, mR = 14, mT = 16, mB = 30;
+  const iw = W - mL - mR, ih = H - mT - mB;
+  const x = w => mL + (18 - firstW === 0 ? iw / 2 : (w - firstW) / (18 - firstW) * iw);
+  const y = p => mT + (1 - p / 100) * ih;   // fixed 0–100 axis for every team
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  for (const gv of [0, 25, 50, 75, 100]) {
+    s += `<line x1="${mL}" y1="${y(gv)}" x2="${W - mR}" y2="${y(gv)}" stroke="${gv === 50 ? '#9aa3ad' : '#1f2733'}" stroke-width="1" ${gv === 50 ? 'stroke-dasharray="5 4"' : ''}/>`;
+    s += `<text x="${mL - 6}" y="${y(gv) + 3.5}" fill="#5f6b7a" font-size="10" text-anchor="end">${gv}</text>`;
+  }
+  for (let w = firstW; w <= 18; w++) {
+    s += `<text x="${x(w)}" y="${H - 10}" fill="#5f6b7a" font-size="9.5" text-anchor="middle">${w}</text>`;
+  }
+  s += `<text x="${(mL + W - mR) / 2}" y="${H - 0.5}" fill="#5f6b7a" font-size="9">week</text>`;
+
+  if (!anyRemaining) {
+    s += `<text x="${W/2}" y="${H/2}" fill="#9aa3ad" font-size="13" text-anchor="middle">Season complete</text></svg>`;
+  } else if (!priced.length) {
+    s += `<text x="${W/2}" y="${H/2}" fill="#9aa3ad" font-size="13" text-anchor="middle">No priced games remaining</text></svg>`;
+  } else {
+    let path = '';
+    priced.forEach((pt, i) => { path += (i ? 'L' : 'M') + x(pt.w).toFixed(1) + ' ' + y(pt.p).toFixed(1) + ' '; });
+    s += `<path d="${path}" fill="none" stroke="#4fa3e0" stroke-width="2" stroke-linejoin="round"/>`;
+    let peak = priced[0];
+    for (const pt of priced) if (pt.p > peak.p) peak = pt;
+    for (const pt of priced) {
+      const isPeak = pt === peak;
+      const fill = pt.src === 'live' ? '#4fa3e0' : '#141a24';
+      s += `<circle cx="${x(pt.w)}" cy="${y(pt.p)}" r="${isPeak ? 6 : 4}" fill="${isPeak ? '#e8c34a' : fill}" stroke="${isPeak ? '#e8c34a' : '#4fa3e0'}" stroke-width="2"><title>Week ${pt.w}: ${pt.opp} — ${pt.p.toFixed(1)}%${pt.src === 'live' ? ' (current DK)' : ' (opener)'}</title></circle>`;
+    }
+    const lx = Math.min(Math.max(x(peak.w), mL + 40), W - mR - 46);
+    const ly = y(peak.p) - 12 < mT + 10 ? y(peak.p) + 20 : y(peak.p) - 12;
+    s += `<text x="${lx}" y="${ly}" fill="#e8c34a" font-size="11.5" font-weight="700" text-anchor="middle">W${peak.w} ${peak.opp} · ${peak.p.toFixed(1)}%</text>`;
+    s += '</svg>';
+  }
+  document.getElementById('chart').innerHTML = s;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeChart() { document.getElementById('overlay').classList.remove('show'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChart(); });
+document.getElementById('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeChart(); });
+
+async function loadLive() {
+  try {
+    const r = await fetch('/api/odds');
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    let applied = 0;
+    for (const g of j.games) {
+      const home = FULL[g.home], away = FULL[g.away];
+      if (!home || !away) continue;
+      const w = weekOf(g.start);
+      const mlH = g.odds[g.home], mlA = g.odds[g.away];
+      if (mlH == null || mlA == null) continue;
+      const pH = noVig(mlH, mlA) * 100;
+      if (state[home][w]) Object.assign(state[home][w], { p: pH, src: 'live', ml: mlH });
+      if (state[away][w]) Object.assign(state[away][w], { p: 100 - pH, src: 'live', ml: mlA });
+      applied++;
+    }
+    document.getElementById('stamp').textContent =
+      `Current DraftKings lines on ${applied} games · odds as of ${new Date(j.fetched).toLocaleString()}`;
+  } catch (e) {
+    document.getElementById('pill').textContent = 'OPENERS ONLY';
+    document.getElementById('pill').className = 'pill stale';
+    document.getElementById('stamp').textContent = 'Current odds unavailable — showing May look-ahead openers.';
+  }
+  render();
+}
+
+async function loadResults() {
+  const cw = currentWeek();
+  const jobs = [];
+  for (let w = 1; w <= cw; w++) {
+    jobs.push(fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${w}&dates=2026`)
+      .then(r => r.json())
+      .then(j => {
+        for (const ev of (j.events || [])) {
+          const comp = ev.competitions && ev.competitions[0];
+          if (!comp || !comp.status.type.completed) continue;
+          const cs = comp.competitors;
+          const homeC = cs.find(c => c.homeAway === 'home'), awayC = cs.find(c => c.homeAway === 'away');
+          const hAb = ESPN_FIX[homeC.team.abbreviation] || homeC.team.abbreviation;
+          const aAb = ESPN_FIX[awayC.team.abbreviation] || awayC.team.abbreviation;
+          const score = `${awayC.score}–${homeC.score}`;
+          const homeWon = homeC.winner === true || (+homeC.score > +awayC.score);
+          if (state[hAb] && state[hAb][w]) Object.assign(state[hAb][w], { result: homeWon ? 'W' : 'L', score });
+          if (state[aAb] && state[aAb][w]) Object.assign(state[aAb][w], { result: homeWon ? 'L' : 'W', score });
+        }
+      })
+      .catch(() => {}));
+  }
+  await Promise.all(jobs);
+  render();
+}
+
+render();
+loadLive();
+loadResults();
+</script>
+</body>
+</html>
