@@ -6,46 +6,51 @@
 <title>2026 NFL Win Probability Grid — DraftKings</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#0e1117; color:#e8e8e8; padding:16px; }
-  h1 { font-size:19px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
-  .pill { font-size:10px; font-weight:800; letter-spacing:.06em; background:#16321f; color:#4fca77; border:1px solid #2b8a4a; padding:2px 7px; border-radius:10px; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#0e1117; color:#e8e8e8; }
+  .page { max-width:1440px; margin:0 auto; padding:24px 20px 32px; }
+  h1 { font-size:22px; font-weight:800; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+  .pill { font-size:10px; font-weight:800; letter-spacing:.06em; background:#16321f; color:#4fca77; border:1px solid #2b8a4a; padding:2px 8px; border-radius:10px; }
   .pill.stale { background:#33251a; color:#e0a95f; border-color:#8a6a2b; }
-  .sub { font-size:12px; color:#9aa3ad; margin-bottom:12px; line-height:1.5; }
-  .legend { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:11px; color:#9aa3ad; margin-bottom:12px; }
-  .bar { width:120px; height:12px; border-radius:6px; background:linear-gradient(90deg, rgb(198,63,63), rgb(247,241,222), rgb(43,138,74)); }
-  .chip { display:inline-block; padding:2px 7px; border-radius:4px; font-weight:600; }
-  .chip.b { background:#1c2330; color:#5f6b7a; }
-  .chip.n { background:#181d26; color:#5f6b7a; }
-  .chip.w { background:#123c22; color:#4fca77; }
-  .chip.l { background:#3c1515; color:#e06060; }
-  .chip.op { background:rgb(148,191,150); color:#1a1a1a; opacity:.55; }
-  .chip.lv { background:rgb(148,191,150); color:#1a1a1a; position:relative; }
-  .dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:#4fca77; margin-left:3px; vertical-align:middle; }
-  .wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:8px; }
-  table { border-collapse:separate; border-spacing:2px; }
-  th { font-size:10.5px; font-weight:700; color:#9aa3ad; padding:4px 2px; min-width:34px; }
+  .sub { font-size:12.5px; color:#9aa3ad; margin-bottom:4px; line-height:1.5; }
+  #stamp { font-size:11.5px; color:#5f6b7a; margin-bottom:14px; }
+  .wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { border-collapse:separate; border-spacing:3px; width:100%; }
+  th { font-size:11px; font-weight:700; color:#9aa3ad; padding:6px 2px; min-width:36px; position:sticky; top:0; background:#0e1117; z-index:4; cursor:pointer; user-select:none; white-space:nowrap; }
+  th:hover { color:#e8e8e8; }
   th.cur { color:#4fca77; }
-  th.avgh { color:#e8e8e8; }
-  td { text-align:center; font-size:11.5px; font-weight:700; border-radius:4px; min-width:34px; height:30px; }
-  td.team { position:sticky; left:0; background:#0e1117; text-align:left; padding-right:8px; min-width:74px; z-index:2; cursor:pointer; }
+  th.sorted { color:#e8e8e8; }
+  th.avgh { font-weight:800; }
+  th.teamh { position:sticky; left:0; z-index:5; cursor:default; }
+  td { text-align:center; font-size:12.5px; font-weight:700; border-radius:5px; min-width:36px; height:34px; }
+  td.team { position:sticky; left:0; background:#0e1117; text-align:left; padding-right:10px; min-width:84px; z-index:2; cursor:pointer; }
   td.team:hover span { text-decoration:underline; }
-  td.team img { width:22px; height:22px; vertical-align:middle; margin-right:6px; }
-  td.team span { font-size:12px; font-weight:700; vertical-align:middle; }
-  th.teamh { position:sticky; left:0; background:#0e1117; z-index:3; }
-  td.bye { background:#1c2330; color:#5f6b7a; font-size:9px; font-weight:600; }
-  td.nl { background:#181d26; color:#5f6b7a; font-size:9px; font-weight:600; }
-  td.open { opacity:.55; }
+  td.team img { width:24px; height:24px; vertical-align:middle; margin-right:7px; }
+  td.team span { font-size:13px; font-weight:700; vertical-align:middle; }
+  td.bye { background:#1c2330; color:#5f6b7a; font-size:9.5px; font-weight:600; }
+  td.nl { background:#181d26; color:#5f6b7a; font-size:9.5px; font-weight:600; }
   td.finw { background:#123c22; color:#4fca77; }
   td.finl { background:#3c1515; color:#e06060; }
   td.avg { outline:2px solid #2a3342; }
   td.wp { position:relative; }
-  td.wp .dot { position:absolute; top:3px; right:3px; }
-  .foot { font-size:11px; color:#5f6b7a; margin-top:12px; line-height:1.5; }
-  #stamp { font-size:11px; color:#5f6b7a; margin-bottom:10px; }
+  td.top2 { outline:2.5px solid #e8c34a; z-index:1; }
+  .dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:#4fca77; position:absolute; top:3px; right:3px; }
+  .foot { font-size:11px; color:#5f6b7a; margin-top:14px; line-height:1.6; }
+  .foot b { color:#e8c34a; font-weight:700; }
+  @media (max-width:760px) {
+    .page { padding:14px 10px 24px; }
+    h1 { font-size:18px; }
+    table { border-spacing:2px; }
+    th { min-width:32px; font-size:10px; }
+    td { min-width:32px; height:29px; font-size:11px; border-radius:4px; }
+    td.team { min-width:70px; }
+    td.team img { width:20px; height:20px; margin-right:5px; }
+    td.team span { font-size:11.5px; }
+    td.top2 { outline-width:2px; }
+  }
   /* chart modal */
   #overlay { display:none; position:fixed; inset:0; background:rgba(5,8,12,.82); z-index:50; align-items:center; justify-content:center; padding:16px; }
   #overlay.show { display:flex; }
-  #modal { background:#141a24; border:1px solid #2a3342; border-radius:12px; padding:18px; max-width:640px; width:100%; }
+  #modal { background:#141a24; border:1px solid #2a3342; border-radius:12px; padding:18px; max-width:660px; width:100%; }
   #modal .head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
   #modal .head img { width:30px; height:30px; }
   #modal .head .name { font-size:16px; font-weight:800; }
@@ -56,24 +61,18 @@
 </style>
 </head>
 <body>
+<div class="page">
 <h1>2026 NFL Win Probability <span class="pill" id="pill">DK LINES</span></h1>
-<div class="sub">No-vig win probabilities from DraftKings moneylines, refreshed each morning. Live lines where DraftKings has the game posted; May look-ahead openers (dimmed) elsewhere. Finished games show the result. <b>Click a team for its remaining-week win probability curve.</b></div>
+<div class="sub">Win probabilities from DraftKings moneylines, refreshed each morning. Click a team for its remaining-week curve; click a week header to sort. Gold boxes mark each team's two best remaining weeks.</div>
 <div id="stamp">Loading odds…</div>
-<div class="legend">
-  <span>0%</span><div class="bar"></div><span>100%</span>
-  <span class="chip lv">62<span class="dot"></span></span><span>current DK line</span>
-  <span class="chip op">62</span><span>May opener</span>
-  <span class="chip w">W</span><span class="chip l">L</span><span>final</span>
-  <span class="chip b">BYE</span>
-  <span class="chip n">OPP</span><span>no line</span>
-</div>
 <div class="wrap"><div id="grid"></div></div>
-<div class="foot">Odds refresh once daily (edge cache expires 7 AM CT; DraftKings moneylines via The Odds API). Results from ESPN. AVG uses remaining games only — current line where posted, opener otherwise. Openers are static May 14 lines and don't reflect news since.</div>
+<div class="foot">Current DK lines show a green dot; cells without a dot are May look-ahead openers (static, pre-news). W/L cells are finals; dark cells are byes or games with no posted line. <b>Gold outline</b> = top-two remaining win probability weeks. AVG covers remaining games only.</div>
+</div>
 
 <div id="overlay"><div id="modal">
   <div class="head"><img id="mLogo" src="" alt=""><span class="name" id="mName"></span><button class="close" onclick="closeChart()">✕</button></div>
-  <div class="note">Remaining weeks · dotted line = 50% · <span style="color:#e8c34a">◉ gold = peak win probability</span> · hollow points = May opener, solid = current DK line</div>
-  <div id="chart"></div>
+  <div class="note">Remaining weeks · dotted line = 50% · <span style="color:#e8c34a">◉ gold = peak week</span> · hollow points = May opener, solid = current DK line</div>
+  <div id="chart" style="position:relative"><div id="ctip" style="display:none;position:absolute;pointer-events:none;background:#0e1117;border:1px solid #2a3342;border-radius:6px;padding:5px 8px;font-size:11.5px;font-weight:600;white-space:nowrap;z-index:5"></div></div>
 </div></div>
 
 <script>
@@ -121,24 +120,56 @@ for (const t of TEAMS) {
   }
 }
 
+let sortKey = 'avg';   // 'avg' or week number
+let sortDir = -1;      // -1 desc, 1 asc
+
+function setSort(k) {
+  if (sortKey === k) sortDir = -sortDir;
+  else { sortKey = k; sortDir = -1; }
+  render();
+}
+
 function fmtMl(ml) { return ml > 0 ? '+' + ml : String(ml); }
+
+function remainingP(t, w) {
+  const c = state[t][w];
+  return (c && !c.result && c.p != null) ? c.p : null;
+}
 
 function render() {
   const cw = currentWeek();
   const rows = TEAMS.map(t => {
-    const ps = [];
-    for (let w = 1; w <= 18; w++) {
-      const c = state[t][w];
-      if (c && !c.result && c.p != null) ps.push(c.p);
-    }
-    return { t, avg: ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : 0, n: ps.length };
-  }).sort((a, b) => b.avg - a.avg);
+    const pw = [];
+    for (let w = 1; w <= 18; w++) { const p = remainingP(t, w); if (p != null) pw.push({ w, p }); }
+    const top2 = new Set([...pw].sort((a, b) => b.p - a.p || a.w - b.w).slice(0, 2).map(x => x.w));
+    return {
+      t,
+      avg: pw.length ? pw.reduce((a, b) => a + b.p, 0) / pw.length : 0,
+      n: pw.length,
+      top2
+    };
+  });
 
+  rows.sort((a, b) => {
+    let va, vb;
+    if (sortKey === 'avg') { va = a.avg; vb = b.avg; }
+    else { va = remainingP(a.t, sortKey); vb = remainingP(b.t, sortKey); }
+    if (va == null && vb == null) return b.avg - a.avg;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    const d = (va - vb) * sortDir;
+    return d !== 0 ? d : b.avg - a.avg;
+  });
+
+  const arrow = sortDir === -1 ? ' ▾' : ' ▴';
   let h = '<table><thead><tr><th class="teamh"></th>';
-  for (let w = 1; w <= 18; w++) h += `<th class="${w === cw ? 'cur' : ''}">W${w}</th>`;
-  h += '<th class="avgh">AVG</th></tr></thead><tbody>';
+  for (let w = 1; w <= 18; w++) {
+    const cls = [w === cw ? 'cur' : '', sortKey === w ? 'sorted' : ''].join(' ');
+    h += `<th class="${cls}" onclick="setSort(${w})">W${w}${sortKey === w ? arrow : ''}</th>`;
+  }
+  h += `<th class="avgh ${sortKey === 'avg' ? 'sorted' : ''}" onclick="setSort('avg')">AVG${sortKey === 'avg' ? arrow : ''}</th></tr></thead><tbody>`;
 
-  for (const { t, avg, n } of rows) {
+  for (const { t, avg, n, top2 } of rows) {
     const slug = SLUG[t] || t.toLowerCase();
     h += `<tr><td class="team" onclick="openChart('${t}')"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/${slug}.png" alt="${t}" loading="lazy"><span>${t}</span></td>`;
     for (let w = 1; w <= 18; w++) {
@@ -151,8 +182,9 @@ function render() {
       } else {
         const [bg, txt] = cellColor(c.p);
         const live = c.src === 'live';
+        const isTop2 = top2.has(w);
         const mlStr = c.ml != null ? ` (${fmtMl(c.ml)})` : '';
-        h += `<td class="wp${live ? ' live' : ' open'}" style="background:${bg};color:${txt}" title="Week ${w}: ${c.opp}${mlStr} — ${c.p.toFixed(1)}% ${live ? 'current DK' : 'May opener'}">${Math.round(c.p)}${live ? '<span class=dot></span>' : ''}</td>`;
+        h += `<td class="wp${live ? '' : ' open'}${isTop2 ? ' top2' : ''}" style="background:${bg};color:${txt}" title="Week ${w}: ${c.opp}${mlStr} — ${c.p.toFixed(1)}% ${live ? 'current DK' : 'May opener'}${isTop2 ? ' · top-2 week' : ''}">${Math.round(c.p)}${live ? '<span class=dot></span>' : ''}</td>`;
       }
     }
     const [abg, atxt] = cellColor(avg);
@@ -168,7 +200,7 @@ function openChart(t) {
   let firstW = 18, anyRemaining = false;
   for (let w = 1; w <= 18; w++) {
     const c = state[t][w];
-    if (!c || c.result) continue;          // remaining weeks only
+    if (!c || c.result) continue;
     anyRemaining = true;
     firstW = Math.min(firstW, w);
     if (c.p != null) priced.push({ w, p: c.p, opp: c.opp, src: c.src });
@@ -179,7 +211,7 @@ function openChart(t) {
   const W = 600, H = 300, mL = 38, mR = 14, mT = 16, mB = 30;
   const iw = W - mL - mR, ih = H - mT - mB;
   const x = w => mL + (18 - firstW === 0 ? iw / 2 : (w - firstW) / (18 - firstW) * iw);
-  const y = p => mT + (1 - p / 100) * ih;   // fixed 0–100 axis for every team
+  const y = p => mT + (1 - p / 100) * ih;
 
   let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
   for (const gv of [0, 25, 50, 75, 100]) {
@@ -204,19 +236,40 @@ function openChart(t) {
     for (const pt of priced) {
       const isPeak = pt === peak;
       const fill = pt.src === 'live' ? '#4fa3e0' : '#141a24';
-      s += `<circle cx="${x(pt.w)}" cy="${y(pt.p)}" r="${isPeak ? 6 : 4}" fill="${isPeak ? '#e8c34a' : fill}" stroke="${isPeak ? '#e8c34a' : '#4fa3e0'}" stroke-width="2"><title>Week ${pt.w}: ${pt.opp} — ${pt.p.toFixed(1)}%${pt.src === 'live' ? ' (current DK)' : ' (opener)'}</title></circle>`;
+      s += `<circle cx="${x(pt.w)}" cy="${y(pt.p)}" r="${isPeak ? 6 : 4}" fill="${isPeak ? '#e8c34a' : fill}" stroke="${isPeak ? '#e8c34a' : '#4fa3e0'}" stroke-width="2" pointer-events="none"/>`;
+    }
+    for (const pt of priced) {
+      s += `<circle class="hit" cx="${x(pt.w)}" cy="${y(pt.p)}" r="11" fill="transparent" data-w="${pt.w}" data-opp="${pt.opp}" data-p="${pt.p.toFixed(1)}" data-src="${pt.src}"/>`;
     }
     const lx = Math.min(Math.max(x(peak.w), mL + 40), W - mR - 46);
     const ly = y(peak.p) - 12 < mT + 10 ? y(peak.p) + 20 : y(peak.p) - 12;
     s += `<text x="${lx}" y="${ly}" fill="#e8c34a" font-size="11.5" font-weight="700" text-anchor="middle">W${peak.w} ${peak.opp} · ${peak.p.toFixed(1)}%</text>`;
     s += '</svg>';
   }
-  document.getElementById('chart').innerHTML = s;
+  document.getElementById('ctip').style.display = 'none';
+  let csvg = document.getElementById('csvg');
+  if (!csvg) { csvg = document.createElement('div'); csvg.id = 'csvg'; document.getElementById('chart').appendChild(csvg); }
+  csvg.innerHTML = s;
   document.getElementById('overlay').classList.add('show');
 }
 function closeChart() { document.getElementById('overlay').classList.remove('show'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChart(); });
 document.getElementById('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeChart(); });
+const chartEl = document.getElementById('chart');
+chartEl.addEventListener('mousemove', e => {
+  const tip = document.getElementById('ctip');
+  const hit = e.target.closest && e.target.closest('.hit');
+  if (!hit) { tip.style.display = 'none'; return; }
+  const d = hit.dataset;
+  tip.innerHTML = `W${d.w} <b>${d.opp}</b> · ${d.p}%<span style="color:#5f6b7a;font-weight:500"> ${d.src === 'live' ? 'current DK' : 'opener'}</span>`;
+  const r = chartEl.getBoundingClientRect();
+  tip.style.display = 'block';
+  let tx = e.clientX - r.left + 12, ty = e.clientY - r.top - 34;
+  if (tx + tip.offsetWidth > r.width - 4) tx = e.clientX - r.left - tip.offsetWidth - 12;
+  if (ty < 0) ty = e.clientY - r.top + 14;
+  tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
+});
+chartEl.addEventListener('mouseleave', () => { document.getElementById('ctip').style.display = 'none'; });
 
 async function loadLive() {
   try {
