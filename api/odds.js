@@ -1,19 +1,24 @@
 // DraftKings NFL moneylines via The Odds API, archived server-side in Vercel Blob.
 // Env: ODDS_API_KEY (required), BLOB_READ_WRITE_TOKEN (auto-added when a Blob store is connected).
-// Edge cache expires 7 AM Chicago daily => ~1 upstream call + 1 blob write per day.
+// Edge cache expires 7 AM & 2 PM Chicago daily; vercel.json crons ping after each boundary => 2 refreshes/day.
 // Blob keeps FULL price history per game: every distinct line with its timestamp.
 
 import { head, put } from '@vercel/blob';
 
 const BLOB_PATH = 'nfl-2026/lines.json';
 
-function secondsUntilNext7amChicago() {
+function secondsUntilNextRefreshChicago() {
+  // refresh boundaries: 7:00 AM and 2:00 PM Chicago time
   const now = new Date();
   const chi = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-  const next = new Date(chi);
-  next.setHours(7, 0, 0, 0);
-  if (chi >= next) next.setDate(next.getDate() + 1);
-  return Math.max(300, Math.round((next - chi) / 1000));
+  let best = null;
+  for (const hr of [7, 14]) {
+    const b = new Date(chi);
+    b.setHours(hr, 0, 0, 0);
+    if (b <= chi) b.setDate(b.getDate() + 1);
+    if (!best || b < best) best = b;
+  }
+  return Math.max(300, Math.round((best - chi) / 1000));
 }
 
 async function readHistory() {
@@ -90,7 +95,7 @@ export default async function handler(req, res) {
       };
     });
 
-  res.setHeader('Cache-Control', `s-maxage=${fetched ? secondsUntilNext7amChicago() : 300}, stale-while-revalidate=86400`);
+  res.setHeader('Cache-Control', `s-maxage=${fetched ? secondsUntilNextRefreshChicago() : 300}, stale-while-revalidate=86400`);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.status(200).json({ fetched, archived, games });
 }
