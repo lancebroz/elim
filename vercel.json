@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/odds", "schedule": "0 13 * * *" },
+    { "path": "/api/odds", "schedule": "0 20 * * *" }
+  ]
+}
