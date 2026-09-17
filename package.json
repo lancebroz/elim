@@ -1,0 +1,8 @@
+{
+  "name": "nfl-winprob",
+  "private": true,
+  "dependencies": {
+    "@vercel/blob": "^2.0.0"
+  },
+  "type": "module"
+}
