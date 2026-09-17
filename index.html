@@ -283,20 +283,21 @@ function saveStored(m) { try { localStorage.setItem(LS_KEY, JSON.stringify(m)); 
 
 async function loadLive() {
   const stored = loadStored();
-  let fetchedAt = null;
+  let fetchedAt = null, archivedFlag = null;
 
   try {
     const r = await fetch('/api/odds');
     if (!r.ok) throw new Error(r.status);
     const j = await r.json();
     fetchedAt = j.fetched;
+    archivedFlag = j.archived;
     for (const g of j.games) {
       const home = FULL[g.home], away = FULL[g.away];
       if (!home || !away) continue;
       const w = GAME_WEEK[away + '|' + home] || weekOf(g.start);
       const mlH = g.odds[g.home], mlA = g.odds[g.away];
       if (mlH == null || mlA == null) continue;
-      stored[`${w}|${away}|${home}`] = { mlH, mlA, ts: j.fetched };
+      stored[`${w}|${away}|${home}`] = { mlH, mlA, ts: g.ts || j.fetched, live: !!g.live };
     }
     saveStored(stored);
   } catch (e) { /* fall through to last-seen lines */ }
@@ -307,7 +308,7 @@ async function loadLive() {
     const [wS, away, home] = k.split('|');
     const w = +wS;
     if (!state[home] || !state[away] || !state[home][w] || !state[away][w]) continue;
-    const isFresh = fetchedAt && v.ts === fetchedAt;
+    const isFresh = !!(fetchedAt && v.live);
     const pH = noVig(v.mlH, v.mlA) * 100;
     if (!state[home][w].result) Object.assign(state[home][w], { p: pH, src: isFresh ? 'live' : 'held', ml: v.mlH, ts: v.ts });
     if (!state[away][w].result) Object.assign(state[away][w], { p: 100 - pH, src: isFresh ? 'live' : 'held', ml: v.mlA, ts: v.ts });
@@ -318,7 +319,8 @@ async function loadLive() {
   if (fetchedAt) {
     stamp.textContent = `Current DraftKings lines on ${liveN} game${liveN === 1 ? '' : 's'}` +
       (heldN ? ` · ${heldN} held from earlier fetches` : '') +
-      ` · as of ${new Date(fetchedAt).toLocaleString()}`;
+      ` · as of ${new Date(fetchedAt).toLocaleString()}` +
+      (archivedFlag === false ? ' · ⚠ server archive off — connect a Blob store in Vercel' : '');
   } else if (liveN + heldN > 0) {
     document.getElementById('pill').textContent = 'CACHED';
     document.getElementById('pill').className = 'pill stale';
