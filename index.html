@@ -66,12 +66,12 @@
 <div class="sub">Win probabilities from DraftKings moneylines, refreshed each morning. Click a team for its remaining-week curve; click a week header to sort. Gold boxes mark each team's two best remaining weeks.</div>
 <div id="stamp">Loading odds…</div>
 <div class="wrap"><div id="grid"></div></div>
-<div class="foot">Current DK lines show a green dot; cells without a dot are May look-ahead openers (static, pre-news). W/L cells are finals; dark cells are byes or games with no posted line. <b>Gold outline</b> = top-two remaining win probability weeks. AVG covers remaining games only.</div>
+<div class="foot">Current DK lines show a green dot; dotted cells are DraftKings lines (current or last seen — hover for the date); cells without a dot are May look-ahead openers. W/L cells are finals; dark cells are byes or games with no posted line. <b>Gold outline</b> = top-two remaining win probability weeks. AVG covers remaining games only.</div>
 </div>
 
 <div id="overlay"><div id="modal">
   <div class="head"><img id="mLogo" src="" alt=""><span class="name" id="mName"></span><button class="close" onclick="closeChart()">✕</button></div>
-  <div class="note">Remaining weeks · dotted line = 50% · <span style="color:#e8c34a">◉ gold = peak week</span> · hollow points = May opener, solid = current DK line</div>
+  <div class="note">Remaining weeks · dotted line = 50% · <span style="color:#e8c34a">◉ gold = peak week</span> · hollow points = May opener, solid = DK line</div>
   <div id="chart" style="position:relative"><div id="ctip" style="display:none;position:absolute;pointer-events:none;background:#0e1117;border:1px solid #2a3342;border-radius:6px;padding:5px 8px;font-size:11.5px;font-weight:600;white-space:nowrap;z-index:5"></div></div>
 </div></div>
 
@@ -92,6 +92,11 @@ const FULL = {
 };
 const ESPN_FIX = { WSH:'WAS' };
 
+const GAME_WEEK = {};
+for (const t in BASE) for (const w in BASE[t]) {
+  const o = BASE[t][w].o;
+  if (o[0] === '@') GAME_WEEK[t + '|' + o.slice(1)] = +w;
+}
 const WK1 = Date.UTC(2026, 8, 8, 10, 0, 0);
 function weekOf(iso) {
   const w = Math.floor((new Date(iso).getTime() - WK1) / (7 * 864e5)) + 1;
@@ -181,10 +186,11 @@ function render() {
         h += `<td class="nl" title="Week ${w}: ${c.opp} — no line posted">${c.opp.replace('vs ', '')}</td>`;
       } else {
         const [bg, txt] = cellColor(c.p);
-        const live = c.src === 'live';
+        const dk = c.src === 'live' || c.src === 'held';
         const isTop2 = top2.has(w);
         const mlStr = c.ml != null ? ` (${fmtMl(c.ml)})` : '';
-        h += `<td class="wp${live ? '' : ' open'}${isTop2 ? ' top2' : ''}" style="background:${bg};color:${txt}" title="Week ${w}: ${c.opp}${mlStr} — ${c.p.toFixed(1)}% ${live ? 'current DK' : 'May opener'}${isTop2 ? ' · top-2 week' : ''}">${Math.round(c.p)}${live ? '<span class=dot></span>' : ''}</td>`;
+        const srcStr = c.src === 'live' ? 'current DK' : c.src === 'held' ? `DK line as of ${new Date(c.ts).toLocaleDateString()}` : 'May opener';
+        h += `<td class="wp${isTop2 ? ' top2' : ''}" style="background:${bg};color:${txt}" title="Week ${w}: ${c.opp}${mlStr} — ${c.p.toFixed(1)}% ${srcStr}${isTop2 ? ' · top-2 week' : ''}">${Math.round(c.p)}${dk ? '<span class=dot></span>' : ''}</td>`;
       }
     }
     const [abg, atxt] = cellColor(avg);
@@ -203,7 +209,7 @@ function openChart(t) {
     if (!c || c.result) continue;
     anyRemaining = true;
     firstW = Math.min(firstW, w);
-    if (c.p != null) priced.push({ w, p: c.p, opp: c.opp, src: c.src });
+    if (c.p != null) priced.push({ w, p: c.p, opp: c.opp, src: c.src, ts: c.ts });
   }
   document.getElementById('mLogo').src = `https://a.espncdn.com/i/teamlogos/nfl/500/${SLUG[t] || t.toLowerCase()}.png`;
   document.getElementById('mName').textContent = `${t} · ${NAMES[t]} — remaining weeks`;
@@ -235,11 +241,11 @@ function openChart(t) {
     for (const pt of priced) if (pt.p > peak.p) peak = pt;
     for (const pt of priced) {
       const isPeak = pt === peak;
-      const fill = pt.src === 'live' ? '#4fa3e0' : '#141a24';
+      const fill = pt.src === 'open' ? '#141a24' : '#4fa3e0';
       s += `<circle cx="${x(pt.w)}" cy="${y(pt.p)}" r="${isPeak ? 6 : 4}" fill="${isPeak ? '#e8c34a' : fill}" stroke="${isPeak ? '#e8c34a' : '#4fa3e0'}" stroke-width="2" pointer-events="none"/>`;
     }
     for (const pt of priced) {
-      s += `<circle class="hit" cx="${x(pt.w)}" cy="${y(pt.p)}" r="11" fill="transparent" data-w="${pt.w}" data-opp="${pt.opp}" data-p="${pt.p.toFixed(1)}" data-src="${pt.src}"/>`;
+      s += `<circle class="hit" cx="${x(pt.w)}" cy="${y(pt.p)}" r="11" fill="transparent" data-w="${pt.w}" data-opp="${pt.opp}" data-p="${pt.p.toFixed(1)}" data-src="${pt.src === 'live' ? 'current DK' : pt.src === 'held' ? 'DK ' + new Date(pt.ts).toLocaleDateString() : 'opener'}"/>`;
     }
     const lx = Math.min(Math.max(x(peak.w), mL + 40), W - mR - 46);
     const ly = y(peak.p) - 12 < mT + 10 ? y(peak.p) + 20 : y(peak.p) - 12;
@@ -261,7 +267,7 @@ chartEl.addEventListener('mousemove', e => {
   const hit = e.target.closest && e.target.closest('.hit');
   if (!hit) { tip.style.display = 'none'; return; }
   const d = hit.dataset;
-  tip.innerHTML = `W${d.w} <b>${d.opp}</b> · ${d.p}%<span style="color:#5f6b7a;font-weight:500"> ${d.src === 'live' ? 'current DK' : 'opener'}</span>`;
+  tip.innerHTML = `W${d.w} <b>${d.opp}</b> · ${d.p}%<span style="color:#5f6b7a;font-weight:500"> ${d.src}</span>`;
   const r = chartEl.getBoundingClientRect();
   tip.style.display = 'block';
   let tx = e.clientX - r.left + 12, ty = e.clientY - r.top - 34;
@@ -271,29 +277,56 @@ chartEl.addEventListener('mousemove', e => {
 });
 chartEl.addEventListener('mouseleave', () => { document.getElementById('ctip').style.display = 'none'; });
 
+const LS_KEY = 'dk-lines-v1';
+function loadStored() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; } }
+function saveStored(m) { try { localStorage.setItem(LS_KEY, JSON.stringify(m)); } catch (e) {} }
+
 async function loadLive() {
+  const stored = loadStored();
+  let fetchedAt = null;
+
   try {
     const r = await fetch('/api/odds');
     if (!r.ok) throw new Error(r.status);
     const j = await r.json();
-    let applied = 0;
+    fetchedAt = j.fetched;
     for (const g of j.games) {
       const home = FULL[g.home], away = FULL[g.away];
       if (!home || !away) continue;
-      const w = weekOf(g.start);
+      const w = GAME_WEEK[away + '|' + home] || weekOf(g.start);
       const mlH = g.odds[g.home], mlA = g.odds[g.away];
       if (mlH == null || mlA == null) continue;
-      const pH = noVig(mlH, mlA) * 100;
-      if (state[home][w]) Object.assign(state[home][w], { p: pH, src: 'live', ml: mlH });
-      if (state[away][w]) Object.assign(state[away][w], { p: 100 - pH, src: 'live', ml: mlA });
-      applied++;
+      stored[`${w}|${away}|${home}`] = { mlH, mlA, ts: j.fetched };
     }
-    document.getElementById('stamp').textContent =
-      `Current DraftKings lines on ${applied} games · odds as of ${new Date(j.fetched).toLocaleString()}`;
-  } catch (e) {
+    saveStored(stored);
+  } catch (e) { /* fall through to last-seen lines */ }
+
+  // apply every line we've ever seen: fresh feed entries overwrote stale ones above
+  let liveN = 0, heldN = 0;
+  for (const [k, v] of Object.entries(stored)) {
+    const [wS, away, home] = k.split('|');
+    const w = +wS;
+    if (!state[home] || !state[away] || !state[home][w] || !state[away][w]) continue;
+    const isFresh = fetchedAt && v.ts === fetchedAt;
+    const pH = noVig(v.mlH, v.mlA) * 100;
+    if (!state[home][w].result) Object.assign(state[home][w], { p: pH, src: isFresh ? 'live' : 'held', ml: v.mlH, ts: v.ts });
+    if (!state[away][w].result) Object.assign(state[away][w], { p: 100 - pH, src: isFresh ? 'live' : 'held', ml: v.mlA, ts: v.ts });
+    isFresh ? liveN++ : heldN++;
+  }
+
+  const stamp = document.getElementById('stamp');
+  if (fetchedAt) {
+    stamp.textContent = `Current DraftKings lines on ${liveN} game${liveN === 1 ? '' : 's'}` +
+      (heldN ? ` · ${heldN} held from earlier fetches` : '') +
+      ` · as of ${new Date(fetchedAt).toLocaleString()}`;
+  } else if (liveN + heldN > 0) {
+    document.getElementById('pill').textContent = 'CACHED';
+    document.getElementById('pill').className = 'pill stale';
+    stamp.textContent = `Odds fetch failed — showing last-seen DraftKings lines (${heldN} game${heldN === 1 ? '' : 's'}).`;
+  } else {
     document.getElementById('pill').textContent = 'OPENERS ONLY';
     document.getElementById('pill').className = 'pill stale';
-    document.getElementById('stamp').textContent = 'Current odds unavailable — showing May look-ahead openers.';
+    stamp.textContent = 'Current odds unavailable — showing May look-ahead openers.';
   }
   render();
 }
