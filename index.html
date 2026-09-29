@@ -36,7 +36,16 @@
   td.wp.est { opacity:.5; }
   tr.divider td { background:transparent; border-top:2px solid #3a4556; border-radius:0; height:20px; color:#5f6b7a; font-size:9px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; text-align:left; padding-top:8px; }
   .dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:#4fca77; position:absolute; top:3px; right:3px; }
+  .dot.alt { background:#4fa3e0; }
   .foot { font-size:11px; color:#5f6b7a; margin-top:14px; line-height:1.6; }
+  #fresh { margin:0 0 12px; }
+  #fresh table { width:auto; border-spacing:0; font-size:11px; color:#9aa3ad; }
+  #fresh th { position:static; cursor:default; text-align:right; padding:3px 10px; border-bottom:1px solid #2a3342; }
+  #fresh th:first-child { text-align:left; }
+  #fresh td { text-align:right; padding:3px 10px; height:auto; min-width:0; border-radius:0; font-weight:600; font-size:11px; }
+  #fresh td:first-child { text-align:left; color:#e8e8e8; }
+  #fresh td span { color:#5f6b7a; font-weight:500; }
+  #fresh .warn { color:#e0a95f; }
   .foot b { color:#e8c34a; font-weight:700; }
   @media (max-width:760px) {
     .page { padding:14px 10px 24px; }
@@ -66,9 +75,10 @@
 <div class="page">
 <h1>2026 NFL Win Probability <span class="pill" id="pill">DK LINES</span></h1>
 <div class="sub">Win probabilities from DraftKings moneylines, refreshed twice daily. Click a team for its remaining-week curve; click a week header to sort. Gold boxes mark each team's two best remaining weeks; ~ cells are model estimates for games with no line.</div>
-<div id="stamp">Loading odds…</div>
+<div id="stamp" style="cursor:pointer" title="Click for per-week data status">Loading odds…</div>
+<div id="fresh" style="display:none"></div>
 <div class="wrap"><div id="grid"></div></div>
-<div class="foot">Current DK lines show a green dot; dotted cells are DraftKings lines (current or last seen — hover for the date); cells without a dot are May look-ahead openers. W/L cells are finals; dark cells are byes or games with no posted line. <b>Gold outline</b> = top-two remaining win probability weeks. ~ cells (faded) have no DK line anywhere, so their number is estimated from team power ratings fitted to every line in the system (with a home-field term) — treat as approximate. Teams sort by average remaining win probability by default; Usable (remaining games at 70%+) includes estimates. Teams below the divider are eliminator picks already used.</div>
+<div class="foot">Current DK lines show a green dot; green-dot cells are DraftKings lines; blue-dot cells are the median of other books (BetOnline, Bovada, FanDuel, ...) where DK has none — DK displaces them the moment it posts (current or last seen — hover for the date and source); cells without a dot are May look-ahead openers. W/L cells are finals; dark cells are byes or games with no posted line. <b>Gold outline</b> = top-two remaining win probability weeks. ~ cells (faded) have no line at any book, so their number is estimated from team power ratings fitted to every line in the system (with a home-field term) — treat as approximate. Teams sort by average remaining win probability by default; Usable (remaining games at 70%+) includes estimates. Teams below the divider are eliminator picks already used.</div>
 </div>
 
 <div id="overlay"><div id="modal">
@@ -118,7 +128,7 @@ function cellColor(p) {
   return [`rgb(${c[0]},${c[1]},${c[2]})`, txt];
 }
 
-const USED = ['LV', 'SF']; // eliminator picks already burned — edit this list as the season goes
+const USED = ['LV', 'SF', 'KC']; // eliminator picks already burned — edit this list as the season goes
 
 const state = {};
 for (const t of TEAMS) {
@@ -173,6 +183,36 @@ function refreshEstimates() {
 
 let sortKey = 'avg';   // 'avg', 'cnt65', or week number
 let sortDir = -1;      // -1 desc, 1 asc
+
+function dataStatus() {
+  const cw = currentWeek();
+  let rows = '';
+  for (let w = cw; w <= 18; w++) {
+    let live = 0, cons = 0, held = 0, est = 0, open = 0, oldest = null, newest = null;
+    for (const t of TEAMS) {
+      const c = state[t][w];
+      if (!c || c.result) continue;
+      if (c.src === 'live') { c.book === 'consensus' ? cons++ : live++; }
+      else if (c.src === 'held') {
+        held++;
+        const d = new Date(c.ts);
+        if (!oldest || d < oldest) oldest = d;
+        if (!newest || d > newest) newest = d;
+      }
+      else if (c.src === 'est') est++;
+      else if (c.p != null) open++;
+    }
+    const heldNote = oldest ? ` <span>(${oldest.toLocaleDateString()}${newest && newest.toDateString() !== oldest.toDateString() ? '–' + newest.toLocaleDateString() : ''})</span>` : '';
+    const liveCell = (w === cw || w === cw + 1) && live + cons === 0 ? `<span class="warn">${live / 2}</span>` : live / 2;
+    rows += `<tr><td>W${w}</td><td>${liveCell}</td><td>${cons / 2}</td><td>${held / 2}${heldNote}</td><td>${open / 2}</td><td>${est / 2}</td></tr>`;
+  }
+  return `<table><thead><tr><th>Week</th><th>Live DK</th><th>Other books</th><th>Held <span>(line dates)</span></th><th>Opener</th><th>Model est</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+document.getElementById('stamp').addEventListener('click', () => {
+  const f = document.getElementById('fresh');
+  if (f.style.display === 'none') { f.innerHTML = dataStatus(); f.style.display = 'block'; }
+  else f.style.display = 'none';
+});
 
 function setSort(k) {
   if (sortKey === k && sortDir === -1) sortDir = 1;
@@ -244,9 +284,10 @@ function render() {
         const dk = c.src === 'live' || c.src === 'held';
         const isTop2 = top2.has(w);
         const mlStr = c.ml != null ? ` (${fmtMl(c.ml)})` : '';
-        const srcStr = c.src === 'live' ? 'current DK' : c.src === 'held' ? `DK line as of ${new Date(c.ts).toLocaleDateString()}` : c.src === 'est' ? 'model estimate (no DK line)' : 'May opener';
+        const bookStr = c.book === 'consensus' ? `consensus of ${c.nb} book${c.nb === 1 ? '' : 's'}` : 'DK';
+        const srcStr = c.src === 'live' ? `current ${bookStr}` : c.src === 'held' ? `${bookStr} line as of ${new Date(c.ts).toLocaleDateString()}` : c.src === 'est' ? 'model estimate (no line at any book)' : 'May opener';
         const num = c.src === 'est' ? `<i>~${Math.round(c.p)}</i>` : Math.round(c.p);
-        h += `<td class="wp${isTop2 ? ' top2' : ''}${c.src === 'est' ? ' est' : ''}" style="background:${bg};color:${txt}" title="Week ${w}: ${c.opp}${mlStr} — ${c.p.toFixed(1)}% ${srcStr}${isTop2 ? ' · top-2 week' : ''}">${num}${dk ? '<span class=dot></span>' : ''}</td>`;
+        h += `<td class="wp${isTop2 ? ' top2' : ''}${c.src === 'est' ? ' est' : ''}" style="background:${bg};color:${txt}" title="Week ${w}: ${c.opp}${mlStr} — ${c.p.toFixed(1)}% ${srcStr}${isTop2 ? ' · top-2 week' : ''}">${num}${dk ? `<span class="dot${c.book === 'consensus' ? ' alt' : ''}"></span>` : ''}</td>`;
       }
     }
     h += `<td class="avg" title="${usable} usable week${usable === 1 ? '' : 's'} — remaining games at 70%+ win probability">${usable}</td></tr>`;
@@ -264,7 +305,7 @@ function openChart(t) {
     if (!c || c.result) continue;
     anyRemaining = true;
     firstW = Math.min(firstW, w);
-    if (c.p != null) priced.push({ w, p: c.p, opp: c.opp, src: c.src, ts: c.ts });
+    if (c.p != null) priced.push({ w, p: c.p, opp: c.opp, src: c.src, ts: c.ts, book: c.book });
   }
   document.getElementById('mLogo').src = `https://a.espncdn.com/i/teamlogos/nfl/500/${SLUG[t] || t.toLowerCase()}.png`;
   document.getElementById('mName').textContent = `${t} · ${NAMES[t]} — remaining weeks`;
@@ -301,7 +342,7 @@ function openChart(t) {
       s += `<circle cx="${x(pt.w)}" cy="${y(pt.p)}" r="${isPeak ? 6 : 4}" fill="${isPeak ? '#e8c34a' : fill}" stroke="${isPeak ? '#e8c34a' : '#4fa3e0'}" stroke-width="2"${dash} pointer-events="none"/>`;
     }
     for (const pt of priced) {
-      s += `<circle class="hit" cx="${x(pt.w)}" cy="${y(pt.p)}" r="11" fill="transparent" data-w="${pt.w}" data-opp="${pt.opp}" data-p="${pt.p.toFixed(1)}" data-src="${pt.src === 'live' ? 'current DK' : pt.src === 'held' ? 'DK ' + new Date(pt.ts).toLocaleDateString() : pt.src === 'est' ? 'estimate' : 'opener'}"/>`;
+      s += `<circle class="hit" cx="${x(pt.w)}" cy="${y(pt.p)}" r="11" fill="transparent" data-w="${pt.w}" data-opp="${pt.opp}" data-p="${pt.p.toFixed(1)}" data-src="${(pt.book === 'consensus' ? 'consensus' : 'DK') + (pt.src === 'live' ? '' : pt.src === 'held' ? ' ' + new Date(pt.ts).toLocaleDateString() : '')}${pt.src === 'est' ? 'estimate' : pt.src === 'open' ? 'opener' : ''}"/>`;
     }
     const lx = Math.min(Math.max(x(peak.w), mL + 40), W - mR - 46);
     const ly = y(peak.p) - 12 < mT + 10 ? y(peak.p) + 20 : y(peak.p) - 12;
@@ -351,29 +392,31 @@ async function loadLive() {
       const home = FULL[g.home], away = FULL[g.away];
       if (!home || !away) continue;
       const w = GAME_WEEK[away + '|' + home] || weekOf(g.start);
-      const mlH = g.odds[g.home], mlA = g.odds[g.away];
-      if (mlH == null || mlA == null) continue;
-      stored[`${w}|${away}|${home}`] = { mlH, mlA, ts: g.ts || j.fetched, live: !!g.live };
+      const mlH = g.odds ? g.odds[g.home] : null, mlA = g.odds ? g.odds[g.away] : null;
+      if (g.pH == null && (mlH == null || mlA == null)) continue;
+      stored[`${w}|${away}|${home}`] = { mlH, mlA, pH: g.pH, book: g.book || 'draftkings', n: g.n, ts: g.ts || j.fetched, live: !!g.live };
     }
     saveStored(stored);
   } catch (e) { /* fall through to last-seen lines */ }
 
   // apply every line we've ever seen: fresh feed entries overwrote stale ones above
-  let liveN = 0, heldN = 0;
+  let liveN = 0, heldN = 0, consN = 0;
   for (const [k, v] of Object.entries(stored)) {
     const [wS, away, home] = k.split('|');
     const w = +wS;
     if (!state[home] || !state[away] || !state[home][w] || !state[away][w]) continue;
     const isFresh = !!(fetchedAt && v.live);
-    const pH = noVig(v.mlH, v.mlA) * 100;
-    if (!state[home][w].result) Object.assign(state[home][w], { p: pH, src: isFresh ? 'live' : 'held', ml: v.mlH, ts: v.ts, est: false });
-    if (!state[away][w].result) Object.assign(state[away][w], { p: 100 - pH, src: isFresh ? 'live' : 'held', ml: v.mlA, ts: v.ts, est: false });
-    isFresh ? liveN++ : heldN++;
+    const book = v.book || 'draftkings';
+    const pH = v.pH != null ? v.pH * 100 : noVig(v.mlH, v.mlA) * 100;
+    if (!state[home][w].result) Object.assign(state[home][w], { p: pH, src: isFresh ? 'live' : 'held', ml: v.mlH ?? null, ts: v.ts, est: false, book, nb: v.n });
+    if (!state[away][w].result) Object.assign(state[away][w], { p: 100 - pH, src: isFresh ? 'live' : 'held', ml: v.mlA ?? null, ts: v.ts, est: false, book, nb: v.n });
+    if (isFresh) { book === 'draftkings' ? liveN++ : consN++; } else heldN++;
   }
 
   const stamp = document.getElementById('stamp');
   if (fetchedAt) {
     stamp.textContent = `Current DraftKings lines on ${liveN} game${liveN === 1 ? '' : 's'}` +
+      (consN ? ` · ${consN} from other-book consensus` : '') +
       (heldN ? ` · ${heldN} held from earlier fetches` : '') +
       ` · as of ${new Date(fetchedAt).toLocaleString()}` +
       (archivedFlag === false ? ' · ⚠ server archive off — connect a Blob store in Vercel' : '');
